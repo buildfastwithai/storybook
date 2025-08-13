@@ -1,0 +1,155 @@
+// Settings Dialog
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 40px 20px;
+
+  h1 {
+    font-family: "Georgia", serif;
+    font-size: 2.5rem;
+    color: #8b4513;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  > p {
+    font-family: "Georgia", serif;
+    font-size: 1.1rem;
+    color: #5d4e37;
+    margin-bottom: 40px;
+    line-height: 1.5;
+  }
+
+  .settings-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+
+    .input-group {
+      text-align: left;
+
+      label {
+        display: block;
+        font-family: "Georgia", serif;
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #8b4513;
+        margin-bottom: 8px;
+      }
+
+      .api-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #8b4513;
+        border-radius: 8px;
+        font-family: "Georgia", serif;
+        font-size: 1rem;
+        background: rgba(255, 255, 255, 0.9);
+        color: #2d2d2d;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+
+        &:focus {
+          outline: none;
+          border-color: #a0522d;
+          box-shadow: 0 0 10px rgba(139, 69, 19, 0.3);
+          background: white;
+        }
+
+        &::placeholder {
+          color: #999;
+          font-style: italic;
+        }
+      }
+
+      small {
+        display: block;
+        margin-top: 5px;
+        font-size: 0.9rem;
+        color: #666;
+
+        a {
+          color: #8b4513;
+          text-decoration: underline;
+
+          &:hover {
+            color: #a0522d;
+          }
+        }
+      }
+    }
+
+    .settings-buttons {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
+
+      .cancel-btn {
+        flex: 1;
+        padding: 12px 20px;
+        background: rgba(139, 69, 19, 0.1);
+        color: #8b4513;
+        border: 2px solid #8b4513;
+        border-radius: 25px;
+        font-family: "Georgia", serif;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: rgba(139, 69, 19, 0.2);
+        }
+      }
+
+      .save-btn {
+        flex: 2;
+        padding: 12px 20px;
+        background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        font-family: "Georgia", serif;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(139, 69, 19, 0.3);
+
+        &:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(139, 69, 19, 0.4);
+        }
+
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+          transform: none;
+        }
+      }
+    }
+  }
+
+  .security-note {
+    margin-top: 30px;
+    padding: 15px;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 8px;
+    text-align: left;
+
+    p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: #166534;
+      line-height: 1.5;
+    }
+  }
+}

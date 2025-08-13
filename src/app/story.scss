@@ -1,0 +1,770 @@
+.story-container {
+  padding: 20px;
+  background: linear-gradient(135deg, #f5f1eb 0%, #e8dcc6 100%);
+  min-height: 100vh;
+
+  .book-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 20px;
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.9);
+      border: 2px solid #8b4513;
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      font-size: 1.2rem;
+      color: #8b4513;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+      &:hover {
+        background: #8b4513;
+        color: white;
+        transform: scale(1.05);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      &.reset-btn {
+        border-radius: 20px;
+        width: auto;
+        padding: 8px 16px;
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
+    }
+
+    .page-counter {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 2px solid #8b4513;
+      color: #8b4513;
+      font-family: "Georgia", serif;
+      font-weight: bold;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  .book-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 70vh;
+  }
+}
+
+.flip-book {
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+  background-size: cover;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.page {
+  padding: 0;
+  background-color: #fefefe;
+  color: #2d2d2d;
+  border: none;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+
+  .page-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+
+    .page-left {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(
+        135deg,
+        #a8e6cf 0%,
+        #7fcdcd 50%,
+        #81c784 100%
+      );
+      padding: 20px;
+
+      .story-illustration {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        width: 100%;
+
+        .illustration-placeholder {
+          font-size: 4rem;
+          text-align: center;
+          line-height: 1.2;
+          filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.2));
+        }
+
+        .generated-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+      }
+    }
+
+    .page-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 40px 30px;
+      background: #fefefe;
+
+      .page-title {
+        font-family: "Georgia", serif;
+        font-size: 1.4rem;
+        color: #8b4513;
+        margin: 0 0 15px 0;
+        font-weight: bold;
+      }
+
+      .story-text {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+
+        p {
+          font-family: "Georgia", serif;
+          font-size: 1.1rem;
+          line-height: 1.6;
+          color: #2d2d2d;
+          margin: 0;
+          text-align: left;
+        }
+      }
+
+      .page-number {
+        text-align: center;
+        font-family: "Georgia", serif;
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 20px;
+      }
+    }
+  }
+
+  &.page-spread {
+    .page-content {
+      min-height: 400px;
+    }
+  }
+
+  // Individual page styles for left/right pages
+  &.page-left-only {
+    .page-content {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(
+        135deg,
+        #a8e6cf 0%,
+        #7fcdcd 50%,
+        #81c784 100%
+      );
+      padding: 20px;
+
+      .story-illustration {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        width: 100%;
+
+        .illustration-placeholder {
+          font-size: 4rem;
+          text-align: center;
+          line-height: 1.2;
+          filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.2));
+        }
+
+        .generated-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+      }
+    }
+  }
+
+  &.page-right-only {
+    .page-content {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 40px 30px;
+      background: #fefefe;
+
+      .page-title {
+        font-family: "Georgia", serif;
+        font-size: 1.4rem;
+        color: #8b4513;
+        margin: 0 0 20px 0;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      .story-text {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+
+        p {
+          font-family: "Georgia", serif;
+          font-size: 1.2rem;
+          line-height: 1.8;
+          color: #2d2d2d;
+          margin: 0;
+        }
+      }
+
+      .page-number {
+        text-align: center;
+        font-family: "Georgia", serif;
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 20px;
+      }
+    }
+  }
+
+  &.--left {
+    border-right: 0;
+    box-shadow: inset -7px 0 30px -7px rgba(0, 0, 0, 0.4);
+  }
+
+  &.--right {
+    border-left: 0;
+    box-shadow: inset 7px 0 30px -7px rgba(0, 0, 0, 0.4);
+
+    .page-footer {
+      text-align: right;
+      justify-content: flex-end;
+    }
+  }
+
+  &.hard {
+    background-color: hsl(35, 50%, 90%);
+    border: solid 1px hsl(35, 20%, 50%);
+  }
+
+  // Single page styles for cover and end pages
+  &.page-single {
+    .page-content {
+      width: 100%;
+      height: 100%;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      text-align: center !important;
+    }
+  }
+
+  &.page-cover {
+    background: linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #cd853f 100%);
+    color: #fefefe;
+    border: none;
+
+    .page-content {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 40px;
+    }
+
+    h1 {
+      font-family: "Georgia", serif;
+      font-size: 2.5rem;
+      margin: 0 0 20px 0;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      font-weight: bold;
+    }
+
+    h2 {
+      font-family: "Georgia", serif;
+      font-size: 2.2rem;
+      margin: 0;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      font-weight: bold;
+    }
+
+    .subtitle {
+      font-family: "Georgia", serif;
+      font-size: 1.2rem;
+      font-style: italic;
+      color: #f0e68c;
+      margin: 10px 0 0 0;
+    }
+
+    &.page-cover-top {
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    &.page-cover-bottom {
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .cover-with-image {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+
+      .cover-image {
+        width: 100%;
+        height: 70%;
+        object-fit: cover;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        margin-bottom: 20px;
+      }
+
+      .cover-text {
+        text-align: center;
+
+        h1 {
+          font-size: 2.2rem;
+          margin: 0 0 10px 0;
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .subtitle {
+          font-size: 1.1rem;
+          margin: 0;
+        }
+      }
+    }
+  }
+}
+
+// Generator interface styles
+.generator-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+
+  h1 {
+    font-family: "Georgia", serif;
+    font-size: 3rem;
+    color: #8b4513;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  > p {
+    font-family: "Georgia", serif;
+    font-size: 1.2rem;
+    color: #5d4e37;
+    margin-bottom: 40px;
+    line-height: 1.5;
+  }
+
+  .prompt-input-container {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+
+    .prompt-input {
+      width: 100%;
+      padding: 20px;
+      border: 3px solid #8b4513;
+      border-radius: 12px;
+      font-family: "Georgia", serif;
+      font-size: 1.1rem;
+      line-height: 1.5;
+      resize: vertical;
+      min-height: 120px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #2d2d2d;
+      transition: all 0.3s ease;
+
+      &:focus {
+        outline: none;
+        border-color: #a0522d;
+        box-shadow: 0 0 15px rgba(139, 69, 19, 0.3);
+        background: white;
+      }
+
+      &::placeholder {
+        color: #999;
+        font-style: italic;
+      }
+
+      &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+    }
+
+    .page-count-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+
+      label {
+        font-family: "Georgia", serif;
+        font-size: 1.1rem;
+        color: #8b4513;
+        font-weight: bold;
+      }
+
+      .page-count-select {
+        padding: 10px 15px;
+        border: 2px solid #8b4513;
+        border-radius: 8px;
+        font-family: "Georgia", serif;
+        font-size: 1rem;
+        background: rgba(255, 255, 255, 0.9);
+        color: #2d2d2d;
+        cursor: pointer;
+        transition: all 0.3s ease;
+
+        &:focus {
+          outline: none;
+          border-color: #a0522d;
+          box-shadow: 0 0 8px rgba(139, 69, 19, 0.3);
+          background: white;
+        }
+
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+      }
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .generate-btn {
+      flex: 1;
+      padding: 15px 30px;
+      background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      font-family: "Georgia", serif;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(139, 69, 19, 0.3);
+
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(139, 69, 19, 0.4);
+        background: linear-gradient(135deg, #a0522d 0%, #8b4513 100%);
+      }
+
+      &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: 0 2px 8px rgba(139, 69, 19, 0.2);
+      }
+    }
+
+    .settings-btn {
+      padding: 15px 20px;
+      background: rgba(139, 69, 19, 0.1);
+      color: #8b4513;
+      border: 2px solid #8b4513;
+      border-radius: 25px;
+      font-family: "Georgia", serif;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+
+      &:hover:not(:disabled) {
+        background: #8b4513;
+        color: white;
+        transform: translateY(-2px);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-top: 40px;
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(139, 69, 19, 0.2);
+      border-left: 4px solid #8b4513;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    p {
+      font-family: "Georgia", serif;
+      color: #5d4e37;
+      font-size: 1.1rem;
+      margin: 0;
+    }
+  }
+
+  .api-status {
+    margin-top: 30px;
+    padding: 15px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.7);
+    text-align: center;
+
+    p {
+      margin: 0;
+      font-family: "Georgia", serif;
+      font-size: 1rem;
+      color: #5d4e37;
+    }
+
+    .status-ready {
+      color: #22c55e;
+      font-weight: bold;
+    }
+
+    .status-needs-setup {
+      color: #f59e0b;
+      font-weight: bold;
+    }
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .story-container {
+    padding: 10px;
+  }
+
+  .page {
+    &.page-spread {
+      .page-content {
+        min-height: 500px;
+
+        &.page-content-mobile {
+          flex-direction: column !important;
+        }
+
+        .page-left {
+          flex: 0 0 200px;
+
+          .story-illustration {
+            .illustration-placeholder {
+              font-size: 3rem;
+            }
+          }
+        }
+
+        .page-right {
+          flex: 1;
+          padding: 20px;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          background: #fefefe !important;
+
+          .page-title {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #8b4513;
+            font-weight: bold;
+          }
+
+          .story-text {
+            flex-grow: 1;
+            display: flex !important;
+            align-items: center !important;
+
+            p {
+              font-size: 1rem;
+              line-height: 1.5;
+              color: #2d2d2d !important;
+              margin: 0;
+              text-align: left;
+              font-family: "Georgia", serif;
+            }
+          }
+
+          .page-number {
+            text-align: center;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            color: #666;
+          }
+        }
+      }
+    }
+
+    // Mobile styles for individual pages
+    &.page-left-only {
+      .page-content {
+        min-height: 300px;
+        padding: 15px;
+
+        .story-illustration {
+          .illustration-placeholder {
+            font-size: 3rem;
+          }
+
+          .generated-image {
+            max-height: 250px;
+            object-fit: contain;
+          }
+        }
+      }
+    }
+
+    &.page-right-only {
+      .page-content {
+        min-height: 300px;
+        padding: 20px 15px;
+
+        .page-title {
+          font-size: 1.1rem;
+          margin-bottom: 15px;
+        }
+
+        .story-text {
+          p {
+            font-size: 1rem;
+            line-height: 1.6;
+            text-align: left;
+          }
+        }
+
+        .page-number {
+          font-size: 0.8rem;
+          margin-top: 15px;
+        }
+      }
+    }
+
+    &.page-cover {
+      .page-content {
+        padding: 40px 20px;
+        min-height: 400px;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+      }
+
+      h1 {
+        font-size: 2rem !important;
+      }
+
+      h2 {
+        font-size: 1.8rem !important;
+      }
+
+      .subtitle {
+        font-size: 1rem !important;
+      }
+
+      .cover-with-image {
+        .cover-image {
+          height: 60%;
+        }
+
+        .cover-text {
+          h1 {
+            font-size: 1.8rem !important;
+          }
+
+          .subtitle {
+            font-size: 0.9rem !important;
+          }
+        }
+      }
+    }
+  }
+
+  .generator-container {
+    padding: 20px 15px;
+
+    h1 {
+      font-size: 2.5rem;
+    }
+
+    > p {
+      font-size: 1.1rem;
+    }
+
+    .prompt-input-container {
+      .prompt-input {
+        padding: 15px;
+        font-size: 1rem;
+        min-height: 100px;
+      }
+
+      .generate-btn {
+        padding: 12px 25px;
+        font-size: 1.1rem;
+      }
+    }
+  }
+}
+// Settings Dialog
