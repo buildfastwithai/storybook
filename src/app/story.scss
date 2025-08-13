@@ -2,6 +2,7 @@
   padding: 20px;
   background: linear-gradient(135deg, #f5f1eb 0%, #e8dcc6 100%);
   min-height: 100vh;
+  overflow: hidden;
 
   .book-controls {
     display: flex;
@@ -344,7 +345,7 @@
 
       .cover-image {
         width: 100%;
-        height: 70%;
+        height: 80%;
         object-fit: cover;
         border-radius: 8px;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);

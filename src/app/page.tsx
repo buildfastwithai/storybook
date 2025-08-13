@@ -482,9 +482,6 @@ export default function Page() {
                   />
                   <div className="cover-text">
                     <h1>{story.title}</h1>
-                    <p className="subtitle">
-                      {story.genre} • Ages {story.targetAge}
-                    </p>
                   </div>
                 </div>
               ) : (

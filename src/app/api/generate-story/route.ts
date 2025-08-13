@@ -8,6 +8,13 @@ import {
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 
+// Define the schema for character descriptions
+const CharacterSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  appearance: z.string(),
+});
+
 // Define the schema for a story page
 const StoryPageSchema = z.object({
   pageNumber: z.number(),
@@ -22,12 +29,14 @@ const StoryPageSchema = z.object({
 const StorySchema = z.object({
   title: z.string(),
   pages: z.array(StoryPageSchema),
+  characters: z.array(CharacterSchema),
   genre: z.string(),
   targetAge: z.string(),
 });
 
 interface StoryWithImages extends z.infer<typeof StorySchema> {
   pages: Array<z.infer<typeof StoryPageSchema> & { imageUrl?: string }>;
+  characters: z.infer<typeof CharacterSchema>[];
   coverImageUrl?: string;
 }
 
@@ -61,7 +70,8 @@ export async function POST(request: NextRequest) {
     const IMAGE_STYLE_DIRECTIVE = `
       Consistent children's book watercolor illustration theme with soft pastel colors and gentle lighting; 
       hand-painted feel with clean outlines; cute rounded proportions; consistent character designs across all pages 
-      (same clothes, colors, hair, and species); single cohesive art style throughout. Avoid text, letters, 
+      (same clothes, colors, hair, and species); single cohesive art style throughout. STRICTLY NO TEXT, NO LETTERS, 
+      NO WORDS, NO WRITING, NO SIGNS, NO CAPTIONS anywhere in the image. Avoid text, letters, numbers, symbols, 
       watermarks, signatures, frames, borders, photorealism, 3D rendering, pixelation, glitches, artifacts, 
       distorted faces, extra fingers, extra limbs, or deformed anatomy.
     `
@@ -93,7 +103,6 @@ export async function POST(request: NextRequest) {
     };
 
     // Step 1: Generate the story structure using Gemini 2.5 Flash
-    console.log("Generating story structure...");
     const storyResult = await generateObject({
       model: google("gemini-2.5-flash"),
       schema: StorySchema,
@@ -105,16 +114,24 @@ export async function POST(request: NextRequest) {
       - Setting/location description
       - Mood/atmosphere
       
+      ALSO provide detailed character descriptions including:
+      - Character name
+      - Brief description of their role/personality
+      - Detailed physical appearance (clothing style, colors, hair, facial features, body type, species if non-human)
+      
+      This is CRITICAL for visual consistency - be very specific about character appearance details like:
+      - Exact clothing items and colors (e.g., "red striped t-shirt, blue jeans")
+      - Hair color, style, and length
+      - Eye color and facial features
+      - Height and build
+      - Any distinguishing features
+      
       Make it educational, fun, and age-appropriate for children aged 4-8 years.`,
     });
 
     const story = storyResult.object as StoryWithImages;
 
-    console.log("Story generated:", story.title);
-    console.log("Number of pages:", story.pages.length);
-
     // Step 2: Generate cover image
-    console.log("Generating cover image...");
     let coverImageUrl: string | undefined;
     try {
       const coverPromptResult = await generateText({
@@ -123,20 +140,19 @@ export async function POST(request: NextRequest) {
         
         Title: ${story.title}
         Genre: ${story.genre}
-        Main Characters: ${story.pages
-          .map((p) => p.characters)
-          .flat()
-          .filter((char, index, arr) => arr.indexOf(char) === index)
+        Main Characters: ${story.characters
+          .map((char) => `${char.name} (${char.appearance})`)
           .join(", ")}
         
          Generate a prompt for a beautiful, colorful children's book cover illustration.
          Enforce this exact visual theme (do not deviate across pages): ${IMAGE_STYLE_DIRECTIVE}
         Include:
         - Main characters in a welcoming scene
-        - Title placement area (but don't include text)
         - Warm, inviting colors
-         - Child-friendly artistic style with consistent character appearance
-         - Storybook cover composition matching the theme
+        - Child-friendly artistic style with consistent character appearance
+        - Storybook cover composition matching the theme
+        
+        IMPORTANT: Create a pure illustration with NO TEXT, NO LETTERS, NO WORDS, NO WRITING of any kind.
         
         Keep it concise (max 80 words).`,
       });
@@ -144,14 +160,12 @@ export async function POST(request: NextRequest) {
       const coverImageResult = await generateImage({
         model: fal.image("fal-ai/qwen-image"),
         prompt: `${coverPromptResult.text}. Visual theme: ${IMAGE_STYLE_DIRECTIVE}`,
-        size: "1024x1024",
+        size: "1024x768",
       });
 
       coverImageUrl = `data:image/png;base64,${Buffer.from(
         coverImageResult.image.uint8Array
       ).toString("base64")}`;
-
-      console.log("Cover image generated successfully");
     } catch (error) {
       console.error("Error generating cover image:", error);
       // Ensure we always have a cover image for downstream fallbacks
@@ -196,20 +210,31 @@ export async function POST(request: NextRequest) {
             
             Title: ${page.title}
             Content: ${page.content}
-            Characters: ${page.characters.join(", ")}
+            Characters in scene: ${page.characters.join(", ")}
             Setting: ${page.setting}
             Mood: ${page.mood}
             
+            CHARACTER DESCRIPTIONS (MUST maintain exact consistency):
+            ${story.characters
+              .filter((char) => page.characters.includes(char.name))
+              .map((char) => `${char.name}: ${char.appearance}`)
+              .join("; ")}
+            
              Generate a prompt for a colorful children's book illustration that captures this scene.
              Enforce this exact visual theme (do not deviate across pages): ${IMAGE_STYLE_DIRECTIVE}
-             Ensure character consistency (same clothing, colors, and features) and coherent proportions.
+             
+             CRITICAL: Use the EXACT character descriptions provided above. Do NOT change clothing, colors, hair, or any physical features.
+             
             Include details about:
-            - The characters and their expressions
+            - The characters with their EXACT appearance as described
+            - Character expressions matching the mood
             - The setting and environment
             - Colors and lighting that match the mood
             - Important objects or elements from the story
             
-            Keep it descriptive but concise (max 80 words).`,
+            ABSOLUTELY NO TEXT: Do not include any text, letters, words, signs, captions, or writing in the image.
+            
+            Keep it descriptive but concise (max 100 words).`,
           })
         );
 
@@ -221,7 +246,7 @@ export async function POST(request: NextRequest) {
             return await generateImage({
               model: fal.image("fal-ai/qwen-image"),
               prompt: enhancedPrompt,
-              size: "1024x1024",
+              size: "1024x768",
             });
           } catch (err) {
             console.warn(
@@ -230,7 +255,7 @@ export async function POST(request: NextRequest) {
             return await generateImage({
               model: fal.image("fal-ai/flux-pro"),
               prompt: enhancedPrompt,
-              size: "1024x1024",
+              size: "1024x768",
             });
           }
         });
@@ -287,8 +312,6 @@ export async function POST(request: NextRequest) {
       pages: pagesWithImages,
       coverImageUrl,
     };
-
-    console.log("Story generation complete!");
 
     return NextResponse.json(finalStory);
   } catch (error) {
