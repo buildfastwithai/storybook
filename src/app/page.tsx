@@ -33,9 +33,7 @@ export default function Page() {
   const [orientation, setOrientation] = useState("landscape");
   const [story, setStory] = useState<Story | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [prompt, setPrompt] = useState(
-    "A boy and a dog meet at street and became best friends"
-  );
+  const [prompt, setPrompt] = useState("");
   const [pageCount, setPageCount] = useState(5);
   const [showGenerator, setShowGenerator] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
