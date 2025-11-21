@@ -274,7 +274,7 @@ export default function Home() {
             )}
 
             <p className="text-stone-400 mb-6 text-sm leading-relaxed">
-              To generate stories and images, you'll need a Google Gemini API key. 
+              To generate stories and images, you&apos;ll need a Google Gemini API key. 
               Your key is used only for this session and is never stored on our servers.
             </p>
 
