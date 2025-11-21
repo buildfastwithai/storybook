@@ -6,6 +6,7 @@ import { FlipBook } from './components/FlipBook';
 import { Button } from './components/Button';
 import { BookOpen, Sparkles, PenTool, AlertCircle, Key, X } from 'lucide-react';
 import Link from 'next/link';
+import { track } from '@vercel/analytics';
 
 export default function Home() {
   const [status, setStatus] = useState<AppState>(AppState.IDLE);
@@ -21,6 +22,8 @@ export default function Home() {
 
   const handleGenerateStory = async () => {
     if (!prompt.trim()) return;
+
+    track('generate_story');
 
     if (!apiKey.trim()) {
       setModalError(null);
