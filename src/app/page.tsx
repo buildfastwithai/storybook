@@ -1,545 +1,304 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { PageFlip } from "page-flip";
-import type { SizeType } from "page-flip";
-import "./story.scss";
-import "./settings.scss";
+import React, { useState, useRef } from 'react';
+import { Story, AppState, StoryPage } from './types';
+import { FlipBook } from './components/FlipBook';
+import { Button } from './components/Button';
+import { BookOpen, Sparkles, PenTool, AlertCircle, Key, X } from 'lucide-react';
+import Link from 'next/link';
 
-interface StoryPage {
-  pageNumber: number;
-  title: string;
-  content: string;
-  characters: string[];
-  setting: string;
-  mood: string;
-  imageUrl?: string;
-}
-
-interface Story {
-  title: string;
-  pages: StoryPage[];
-  genre: string;
-  targetAge: string;
-  coverImageUrl?: string;
-}
-
-export default function Page() {
-  const flipBookRef = useRef<HTMLDivElement>(null);
-  const pageFlipRef = useRef<PageFlip | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [pageState, setPageState] = useState("read");
-  const [orientation, setOrientation] = useState("landscape");
+export default function Home() {
+  const [status, setStatus] = useState<AppState>(AppState.IDLE);
+  const [prompt, setPrompt] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
   const [story, setStory] = useState<Story | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [prompt, setPrompt] = useState("");
-  const [pageCount, setPageCount] = useState(5);
-  const [showGenerator, setShowGenerator] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
-  const [apiKeys, setApiKeys] = useState({
-    geminiKey: "",
-    falKey: "",
-  });
+  const [error, setError] = useState<string | null>(null);
+  
+  // Ref to track if we should continue generating images
+  const isGeneratingImagesRef = useRef(false);
 
-  // Load API keys from localStorage on mount
-  useEffect(() => {
-    const savedKeys = localStorage.getItem("ai-storybook-keys");
-
-    if (savedKeys) {
-      try {
-        const parsedKeys = JSON.parse(savedKeys);
-        setApiKeys(parsedKeys);
-      } catch (error) {
-        console.error("Error parsing saved keys:", error);
-        localStorage.removeItem("ai-storybook-keys");
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (
-      flipBookRef.current &&
-      !pageFlipRef.current &&
-      story &&
-      !showGenerator
-    ) {
-      const pageFlip = new PageFlip(flipBookRef.current, {
-        width: 400,
-        height: 300,
-        size: "stretch" as SizeType,
-        minWidth: 300,
-        maxWidth: 600,
-        minHeight: 200,
-        maxHeight: 200,
-        maxShadowOpacity: 0.5,
-        showCover: true,
-        mobileScrollSupport: false,
-      });
-
-      pageFlip.loadFromHTML(document.querySelectorAll(".page"));
-
-      // Set total pages as: Cover + Story pages + End = story.pages.length + 2
-      setTotalPages(story.pages.length + 2);
-      setOrientation(String(pageFlip.getOrientation()));
-
-      pageFlip.on("flip", (e) => {
-        const pageIndex = typeof e.data === "number" ? e.data : 0;
-        // Account for structure: Cover (0), Hidden (1), Story pairs (2,3), (4,5), ..., Hidden (n-1), End (n)
-        let displayPage = 1;
-
-        if (pageIndex <= 1) {
-          displayPage = 1; // Cover page (index 0 or 1)
-        } else if (pageIndex >= story.pages.length * 2 + 2) {
-          displayPage = story.pages.length + 2; // End page
-        } else {
-          // Story pages: subtract 2 for cover+hidden, then divide by 2, then add 2 for cover+first story page
-          displayPage = Math.floor((pageIndex - 2) / 2) + 2;
-        }
-
-        setCurrentPage(displayPage);
-      });
-
-      pageFlip.on("changeState", (e) => {
-        setPageState(String(e.data));
-      });
-
-      pageFlip.on("changeOrientation", (e) => {
-        setOrientation(String(e.data));
-      });
-
-      pageFlipRef.current = pageFlip;
-    }
-  }, [story, showGenerator]);
-
-  const handlePrevPage = () => {
-    if (pageFlipRef.current) {
-      pageFlipRef.current.flipPrev();
-    }
-  };
-
-  const handleNextPage = () => {
-    if (pageFlipRef.current) {
-      pageFlipRef.current.flipNext();
-    }
-  };
-
-  const generateStory = async () => {
+  const handleGenerateStory = async () => {
     if (!prompt.trim()) return;
 
-    // Check if API keys are provided
-    if (!apiKeys.geminiKey || !apiKeys.falKey) {
-      alert(
-        "Please configure your API keys in the settings before generating a story."
-      );
-      setShowSettings(true);
+    if (!apiKey.trim()) {
+      setModalError(null);
+      setIsApiKeyModalOpen(true);
       return;
     }
 
-    setIsGenerating(true);
+    setStatus(AppState.GENERATING_STORY);
+    setError(null);
+    setStory(null);
+    isGeneratingImagesRef.current = false;
+
     try {
-      const response = await fetch("/api/generate-story", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt,
-          pageCount,
-          apiKeys: {
-            geminiKey: apiKeys.geminiKey,
-            falKey: apiKeys.falKey,
-          },
-        }),
+      const response = await fetch('/api/generate-story', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, apiKey }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate story");
+        throw new Error('Failed to generate story');
       }
 
-      const generatedStory = await response.json();
-
+      const generatedStory: Story = await response.json();
       setStory(generatedStory);
-      setShowGenerator(false);
-    } catch (error) {
-      console.error("Error generating story:", error);
-      alert("Failed to generate story. Please try again.");
-    } finally {
-      setIsGenerating(false);
+      setStatus(AppState.READING);
+      
+      // Start generating images in the background
+      startImageGenerationQueue(generatedStory);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to weave your story. Please try a different prompt.");
+      setStatus(AppState.ERROR);
     }
   };
 
-  const resetToGenerator = () => {
-    setShowGenerator(true);
+  const startImageGenerationQueue = async (currentStory: Story) => {
+    isGeneratingImagesRef.current = true;
+    const pages = [...currentStory.pages];
+
+    // We generate images sequentially to ensure order and manage rate limits gently
+    for (let i = 0; i < pages.length; i++) {
+      if (!isGeneratingImagesRef.current) break;
+      
+      // Update loading state for this page
+      updatePageStatus(i, { isLoadingImage: true });
+
+      try {
+        const response = await fetch('/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: pages[i].imagePrompt, apiKey }),
+        });
+
+        if (response.status === 429) {
+           const data = await response.json();
+           setModalError(data.message || "Free tier quota exceeded. Please enter a paid Gemini API key.");
+           setIsApiKeyModalOpen(true);
+           isGeneratingImagesRef.current = false;
+           updatePageStatus(i, { isLoadingImage: false });
+           break;
+        }
+
+        if (!response.ok) {
+            throw new Error('Failed to generate image');
+        }
+
+        const { imageUrl } = await response.json();
+
+        if (!isGeneratingImagesRef.current) break;
+        
+        updatePageStatus(i, { imageUrl, isLoadingImage: false });
+      } catch (e) {
+        console.error(`Failed to generate image for page ${i}`, e);
+        updatePageStatus(i, { isLoadingImage: false }); // Just stop loading, leave placeholder
+      }
+    }
+    isGeneratingImagesRef.current = false;
+  };
+
+  const updatePageStatus = (index: number, updates: Partial<StoryPage>) => {
+    setStory(prev => {
+      if (!prev) return null;
+      const newPages = [...prev.pages];
+      newPages[index] = { ...newPages[index], ...updates };
+      return { ...prev, pages: newPages };
+    });
+  };
+
+  const handleRestart = () => {
+    isGeneratingImagesRef.current = false;
+    setStatus(AppState.IDLE);
+    setPrompt('');
     setStory(null);
-    setPrompt("");
-    pageFlipRef.current = null;
   };
-
-  const saveApiKeys = () => {
-    localStorage.setItem("ai-storybook-keys", JSON.stringify(apiKeys));
-    setShowSettings(false);
-  };
-
-  const handleKeyChange = (key: "geminiKey" | "falKey", value: string) => {
-    setApiKeys((prev) => ({ ...prev, [key]: value }));
-  };
-
-  // Settings Dialog should take priority over generator
-  if (showSettings) {
-    return (
-      <div className="story-container">
-        <div className="settings-container">
-          <h1>API Settings</h1>
-          <p>Enter your API keys to generate AI stories and illustrations.</p>
-
-          <div className="settings-form">
-            <div className="input-group">
-              <label htmlFor="gemini-key">Google Gemini API Key</label>
-              <input
-                id="gemini-key"
-                type="password"
-                value={apiKeys.geminiKey}
-                onChange={(e) => handleKeyChange("geminiKey", e.target.value)}
-                placeholder="Enter your Gemini API key"
-                className="api-input"
-              />
-              <small>
-                Get your key from:{" "}
-                <a
-                  href="https://aistudio.google.com/app/apikey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Google AI Studio
-                </a>
-              </small>
-            </div>
-
-            <div className="input-group">
-              <label htmlFor="fal-key">Fal AI API Key</label>
-              <input
-                id="fal-key"
-                type="password"
-                value={apiKeys.falKey}
-                onChange={(e) => handleKeyChange("falKey", e.target.value)}
-                placeholder="Enter your Fal AI key"
-                className="api-input"
-              />
-              <small>
-                Get your key from:{" "}
-                <a
-                  href="https://fal.ai/dashboard/api-keys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Fal AI Dashboard
-                </a>
-              </small>
-            </div>
-
-            <div className="settings-buttons">
-              <button
-                onClick={() => setShowSettings(false)}
-                className="cancel-btn"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveApiKeys}
-                disabled={!apiKeys.geminiKey || !apiKeys.falKey}
-                className="save-btn"
-              >
-                Save Keys
-              </button>
-            </div>
-          </div>
-
-          <div className="security-note">
-            <p>
-              <strong>🔒 Security Note:</strong> Your API keys are stored
-              locally in your browser and never sent to any server except the
-              official AI providers.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (showGenerator) {
-    return (
-      <div className="story-container">
-        <div className="generator-container">
-          <h1>AI Storybook Creator</h1>
-          <p>
-            Enter a prompt to generate a personalized children&#39;s storybook
-            with AI-generated illustrations!
-          </p>
-
-          <div className="prompt-input-container">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Enter your story idea... (e.g., 'A brave little mouse who dreams of becoming a chef' or 'An adventure in a magical forest with talking animals')"
-              className="prompt-input"
-              rows={4}
-              disabled={isGenerating}
-            />
-
-            <div className="page-count-container">
-              <label htmlFor="page-count">Number of Pages:</label>
-              <select
-                id="page-count"
-                value={pageCount}
-                onChange={(e) => setPageCount(Number(e.target.value))}
-                className="page-count-select"
-                disabled={isGenerating}
-              >
-                {[...Array(10)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1} page{i + 1 > 1 ? "s" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="action-buttons">
-              <button
-                onClick={() => setShowSettings(true)}
-                className="settings-btn"
-                disabled={isGenerating}
-              >
-                ⚙️ API Settings
-              </button>
-              <button
-                onClick={generateStory}
-                disabled={
-                  !prompt.trim() ||
-                  isGenerating ||
-                  !apiKeys.geminiKey ||
-                  !apiKeys.falKey
-                }
-                className="generate-btn"
-              >
-                {isGenerating ? "Generating Story..." : "Generate Story"}
-              </button>
-            </div>
-          </div>
-
-          {isGenerating && (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p>
-                Creating your magical storybook... This may take a few minutes.
-              </p>
-            </div>
-          )}
-
-          {/* API Keys Status */}
-          <div className="api-status">
-            <p>
-              Status:
-              {apiKeys.geminiKey && apiKeys.falKey ? (
-                <span className="status-ready">✅ Ready to generate</span>
-              ) : (
-                <span className="status-needs-setup">
-                  ⚠️ Please configure API keys
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Settings Dialog
-  if (showSettings) {
-    return (
-      <div className="story-container">
-        <div className="settings-container">
-          <h1>API Settings</h1>
-          <p>Enter your API keys to generate AI stories and illustrations.</p>
-
-          <div className="settings-form">
-            <div className="input-group">
-              <label htmlFor="gemini-key">Google Gemini API Key</label>
-              <input
-                id="gemini-key"
-                type="password"
-                value={apiKeys.geminiKey}
-                onChange={(e) => handleKeyChange("geminiKey", e.target.value)}
-                placeholder="Enter your Gemini API key"
-                className="api-input"
-              />
-              <small>
-                Get your key from:{" "}
-                <a
-                  href="https://aistudio.google.com/app/apikey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Google AI Studio
-                </a>
-              </small>
-            </div>
-
-            <div className="input-group">
-              <label htmlFor="fal-key">Fal AI API Key</label>
-              <input
-                id="fal-key"
-                type="password"
-                value={apiKeys.falKey}
-                onChange={(e) => handleKeyChange("falKey", e.target.value)}
-                placeholder="Enter your Fal AI key"
-                className="api-input"
-              />
-              <small>
-                Get your key from:{" "}
-                <a
-                  href="https://fal.ai/dashboard/api-keys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Fal AI Dashboard
-                </a>
-              </small>
-            </div>
-
-            <div className="settings-buttons">
-              <button
-                onClick={() => setShowSettings(false)}
-                className="cancel-btn"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveApiKeys}
-                disabled={!apiKeys.geminiKey || !apiKeys.falKey}
-                className="save-btn"
-              >
-                Save Keys
-              </button>
-            </div>
-          </div>
-
-          <div className="security-note">
-            <p>
-              <strong>🔒 Security Note:</strong> Your API keys are stored
-              locally in your browser and never sent to any server except the
-              official AI providers.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="story-container">
-      <div className="book-controls">
-        <button
-          type="button"
-          className="nav-btn reset-btn"
-          onClick={resetToGenerator}
-          aria-label="Create new story"
-        >
-          ✏️ New Story
-        </button>
-        <button
-          type="button"
-          className="nav-btn prev-btn"
-          onClick={handlePrevPage}
-          aria-label="Previous page"
-        >
-          ←
-        </button>
-        <span className="page-counter">
-          {currentPage} of {totalPages}
-        </span>
-        <button
-          type="button"
-          className="nav-btn next-btn"
-          onClick={handleNextPage}
-          aria-label="Next page"
-        >
-          →
-        </button>
+    <div className="min-h-screen bg-[#1a1a1a] text-stone-200 flex flex-col relative overflow-hidden font-sans">
+      {/* Ambient Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-amber-900/20 rounded-full blur-[120px]"></div>
       </div>
-      <div className="book-container">
-        <div className="flip-book" ref={flipBookRef}>
-          {/* Cover Page */}
-          <div className="page page-cover page-cover-top" data-density="hard">
-            <div className="page-content">
-              {story?.coverImageUrl ? (
-                <div className="cover-with-image">
-                  <img
-                    src={story.coverImageUrl}
-                    alt={`Cover for ${story.title}`}
-                    className="cover-image"
-                  />
-                  <div className="cover-text">
-                    <h1>{story.title}</h1>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <h1>{story?.title || "Generated Story"}</h1>
-                  <p className="subtitle">
-                    {story?.genre} • Ages {story?.targetAge}
-                  </p>
-                </>
-              )}
+
+      {/* Header */}
+      <header className="relative z-10 p-6 flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto w-full gap-4">
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-br from-amber-400 to-orange-600 p-2 rounded-lg shadow-lg shadow-orange-900/50">
+            <BookOpen className="text-white h-6 w-6" />
+          </div>
+          <h1 className="font-sans text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-100">
+            Storybook
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-4">
+           <Button 
+             variant="ghost" 
+             onClick={() => {
+               setModalError(null);
+               setIsApiKeyModalOpen(true);
+             }}
+             className="text-stone-400 hover:text-amber-400"
+           >
+             <Key className="w-4 h-4 mr-2" />
+             {apiKey ? "Update API Key" : "Add Gemini API Key"}
+           </Button>
+
+          {status === AppState.READING && (
+            <Button variant="ghost" onClick={handleRestart} className="hidden md:flex">
+              Create New Story
+            </Button>
+          )}
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 relative z-10 flex flex-col items-center justify-center p-4 md:p-8 w-full max-w-7xl mx-auto">
+        
+        {status === AppState.IDLE && (
+          <div className="w-full max-w-2xl flex flex-col items-center text-center animate-fade-in">
+            <div className="mb-8 p-4 rounded-full bg-amber-500/10 border border-amber-500/20">
+              <Sparkles className="w-8 h-8 text-amber-400" />
+            </div>
+            <h2 className="font-title text-4xl md:text-5xl mb-6 text-white drop-shadow-lg">
+              What story shall we tell today?
+            </h2>
+            <p className="text-lg text-stone-400 mb-10 max-w-md leading-relaxed">
+              Enter a short idea, character, or theme, and watch as we weave a magical illustrated book just for you.
+            </p>
+            
+            <div className="w-full bg-stone-800/50 backdrop-blur-xl border border-stone-700 rounded-2xl p-2 shadow-2xl shadow-black/50 transition-all focus-within:border-amber-500/50 focus-within:ring-4 focus-within:ring-amber-500/10">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Example: A lonely robot who finds a flower on Mars..."
+                className="w-full bg-transparent border-none text-xl text-white placeholder-stone-600 p-4 focus:ring-0 resize-none min-h-[120px] rounded-xl outline-none"
+                maxLength={300}
+              />
+              <div className="flex justify-between items-center px-4 pb-2 pt-2">
+                <span className="text-xs text-stone-600 font-medium">{prompt.length}/300</span>
+                <Button 
+                  onClick={handleGenerateStory} 
+                  disabled={!prompt.trim()}
+                  className="shadow-amber-500/20"
+                >
+                  <PenTool className="w-4 h-4" />
+                  Weave Story
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {[
+                "A magical cat who can control time",
+                "A young astronaut exploring a candy planet",
+                "A dragon who is afraid of fire"
+              ].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => setPrompt(suggestion)}
+                  className="px-4 py-2 rounded-full bg-stone-800/50 border border-stone-700 text-stone-400 text-sm hover:bg-amber-500/10 hover:border-amber-500/50 hover:text-amber-200 transition-all"
+                >
+                  {suggestion}
+                </button>
+              ))}
             </div>
           </div>
+        )}
 
-          {/* Story Pages - Split into separate left and right pages */}
-          {story?.pages.map((page) => (
-            <React.Fragment key={page.pageNumber}>
-              {/* Left Page - Image */}
-              <div className="page page-left-only">
-                <div className="page-content">
-                  <div className="story-illustration">
-                    {page.imageUrl ? (
-                      <img
-                        src={page.imageUrl}
-                        alt={`Illustration for ${page.title}`}
-                        className="generated-image"
-                      />
-                    ) : (
-                      <div className="illustration-placeholder">
-                        🎨 Generating...
-                      </div>
-                    )}
-                  </div>
-                </div>
+        {status === AppState.GENERATING_STORY && (
+          <div className="flex flex-col items-center justify-center animate-pulse">
+            <div className="relative w-24 h-24 mb-8">
+              <div className="absolute inset-0 border-4 border-amber-500/30 rounded-full animate-ping"></div>
+              <div className="absolute inset-0 border-4 border-t-amber-500 rounded-full animate-spin"></div>
+              <BookOpen className="absolute inset-0 m-auto text-amber-500 w-8 h-8" />
+            </div>
+            <h3 className="font-title text-2xl text-amber-100 mb-2">Weaving your tale...</h3>
+            <p className="text-stone-400">Crafting characters and plot twists</p>
+          </div>
+        )}
+
+        {status === AppState.ERROR && (
+          <div className="flex flex-col items-center text-center max-w-md p-8 bg-red-900/20 border border-red-500/30 rounded-2xl">
+            <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
+            <h3 className="font-title text-xl text-red-200 mb-2">The ink spilled!</h3>
+            <p className="text-stone-400 mb-6">{error}</p>
+            <Button variant="secondary" onClick={() => setStatus(AppState.IDLE)}>
+              Try Again
+            </Button>
+          </div>
+        )}
+
+        {status === AppState.READING && story && (
+          <div className="w-full h-full flex items-center justify-center perspective-1000">
+            <FlipBook story={story} onRestart={handleRestart} />
+          </div>
+        )}
+      </main>
+      
+      <footer className="relative z-10 p-4 text-center text-stone-600 text-sm">
+        Powered by <Link href={"https://buildfastwithai.com"} target='_blank'>Build Fast with AI</Link>
+      </footer>
+
+      {/* API Key Modal */}
+      {isApiKeyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-[#1a1a1a] border border-stone-700 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+            <button 
+              onClick={() => setIsApiKeyModalOpen(false)}
+              className="absolute top-4 right-4 text-stone-500 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-amber-500/10 rounded-full">
+                <Key className="w-6 h-6 text-amber-500" />
               </div>
+              <h3 className="text-xl font-bold text-white">Enter Gemini API Key</h3>
+            </div>
 
-              {/* Right Page - Text */}
-              <div className="page page-right-only">
-                <div className="page-content">
-                  <h3 className="page-title">{page.title}</h3>
-                  <div className="story-text">
-                    <p>{page.content}</p>
-                  </div>
-                  <div className="page-number">{page.pageNumber}</div>
-                </div>
+            {modalError && (
+              <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-200">{modalError}</p>
               </div>
-            </React.Fragment>
-          ))}
+            )}
 
-          {/* End Page */}
-          <div
-            className="page page-cover page-cover-bottom"
-            data-density="hard"
-          >
-            <div className="page-content">
-              <h2>THE END</h2>
-              <p className="subtitle">Thank you for reading!</p>
+            <p className="text-stone-400 mb-6 text-sm leading-relaxed">
+              To generate stories and images, you'll need a Google Gemini API key. 
+              Your key is used only for this session and is never stored on our servers.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-stone-500 mb-1.5 uppercase tracking-wider">API Key</label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="w-full bg-black/20 border border-stone-700 text-white rounded-xl p-3 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all placeholder-stone-700"
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="ghost" onClick={() => setIsApiKeyModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => setIsApiKeyModalOpen(false)}>
+                  Save Key
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

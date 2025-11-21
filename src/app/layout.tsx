@@ -30,14 +30,6 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {/* Fixed Logo in top left */}
-        <div className="fixed-logo">
-          <img
-            src="/images/dark.svg"
-            alt="AI Storybook Logo"
-            className="logo-svg"
-          />
-        </div>
         {children}
       </body>
     </html>

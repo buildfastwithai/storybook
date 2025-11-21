@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun run build:*)",
+      "Bash(bun pm:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

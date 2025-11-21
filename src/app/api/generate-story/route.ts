@@ -1,10 +1,5 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createFal } from "@ai-sdk/fal";
-import {
-  generateObject,
-  generateText,
-  experimental_generateImage as generateImage,
-} from "ai";
+import { generateObject } from "ai";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -23,33 +18,16 @@ const StoryPageSchema = z.object({
   characters: z.array(z.string()),
   setting: z.string(),
   mood: z.string(),
+  imagePrompt: z.string().describe("A detailed visual description of the scene for an AI image generator. Include art style details like 'storybook illustration', 'watercolor', or 'vibrant digital art'."),
 });
 
-// Define the schema for the complete story
-const StorySchema = z.object({
-  title: z.string(),
-  pages: z.array(StoryPageSchema),
-  characters: z.array(CharacterSchema),
-  genre: z.string(),
-  targetAge: z.string(),
-});
-
-interface StoryWithImages extends z.infer<typeof StorySchema> {
-  pages: Array<z.infer<typeof StoryPageSchema> & { imageUrl?: string }>;
-  characters: z.infer<typeof CharacterSchema>[];
-  coverImageUrl?: string;
-}
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, pageCount = 5, apiKeys } = await request.json();
+    const { prompt, apiKey } = await request.json();
 
     const google = createGoogleGenerativeAI({
-      apiKey: apiKeys.geminiKey,
-    });
-
-    const fal = createFal({
-      apiKey: apiKeys.falKey,
+      apiKey: apiKey,
     });
 
     if (!prompt) {
@@ -59,261 +37,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!apiKeys || !apiKeys.geminiKey || !apiKeys.falKey) {
-      return NextResponse.json(
-        { error: "API keys are required" },
-        { status: 400 }
-      );
-    }
+    const systemInstruction = `You are a master storyteller and children's book author. 
+    Your goal is to write a captivating short story based on the user's input.
+    The story should be between 6 to 10 pages long.
+    Each page should have 2-4 sentences of engaging narrative text.
+    
+    CRITICAL FOR IMAGE GENERATION:
+    1. Define a consistent "visualTheme" for the entire book (e.g., "Watercolor style, soft pastel colors, whimsical atmosphere").
+    2. For each character, provide a detailed "appearance" description that MUST be used in every image prompt where they appear.
+    3. For each page, provide an "imagePrompt" that describes the scene action.
+    
+    The tone should be magical, whimsical, and appropriate for all ages.`;
 
-    // Unified visual theme to keep all images consistent and avoid buggy outputs
-    const IMAGE_STYLE_DIRECTIVE = `
-      Consistent children's book watercolor illustration theme with soft pastel colors and gentle lighting; 
-      hand-painted feel with clean outlines; cute rounded proportions; consistent character designs across all pages 
-      (same clothes, colors, hair, and species); single cohesive art style throughout. STRICTLY NO TEXT, NO LETTERS, 
-      NO WORDS, NO WRITING, NO SIGNS, NO CAPTIONS anywhere in the image. Avoid text, letters, numbers, symbols, 
-      watermarks, signatures, frames, borders, photorealism, 3D rendering, pixelation, glitches, artifacts, 
-      distorted faces, extra fingers, extra limbs, or deformed anatomy.
-    `
-      .replace(/\s+/g, " ")
-      .trim();
-
-    // Local placeholder (never fails)
-    const makePlaceholderImage = (title: string) => {
-      const safeTitle = (title || "Story").slice(0, 40);
-      const svg = `<?xml version='1.0' encoding='UTF-8'?>
-<svg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024'>
-  <defs>
-    <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
-      <stop offset='0%' stop-color='#a8e6cf'/>
-      <stop offset='50%' stop-color='#7fcdcd'/>
-      <stop offset='100%' stop-color='#81c784'/>
-    </linearGradient>
-  </defs>
-  <rect width='1024' height='1024' fill='url(#g)'/>
-  <g fill='#000000' opacity='0.15'>
-    <circle cx='200' cy='200' r='60'/>
-    <circle cx='250' cy='260' r='20'/>
-    <circle cx='160' cy='260' r='20'/>
-  </g>
-  <text x='50%' y='52%' dominant-baseline='middle' text-anchor='middle' font-family='Georgia, serif' font-size='64' fill='rgba(0,0,0,0.65)'>${safeTitle}</text>
-  <text x='50%' y='60%' dominant-baseline='middle' text-anchor='middle' font-family='Georgia, serif' font-size='36' fill='rgba(0,0,0,0.55)'>Illustration placeholder</text>
- </svg>`;
-      return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
-    };
-
-    // Step 1: Generate the story structure using Gemini 2.5 Flash
     const storyResult = await generateObject({
-      model: google("gemini-2.5-flash"),
-      schema: StorySchema,
-      prompt: `Create a children's storybook based on this prompt: "${prompt}". 
-      The story should have exactly ${pageCount} pages, with each page having:
-      - A clear title
-      - 2-3 sentences of engaging content appropriate for children
-      - Characters involved in that scene
-      - Setting/location description
-      - Mood/atmosphere
-      
-      ALSO provide detailed character descriptions including:
-      - Character name
-      - Brief description of their role/personality
-      - Detailed physical appearance (clothing style, colors, hair, facial features, body type, species if non-human)
-      
-      This is CRITICAL for visual consistency - be very specific about character appearance details like:
-      - Exact clothing items and colors (e.g., "red striped t-shirt, blue jeans")
-      - Hair color, style, and length
-      - Eye color and facial features
-      - Height and build
-      - Any distinguishing features
-      
-      Make it educational, fun, and age-appropriate for children aged 4-8 years.`,
+      model: google("gemini-2.5-flash"), 
+      schema: z.object({
+        title: z.string(),
+        visualTheme: z.string().describe("A detailed description of the overall art style and visual atmosphere for the entire book."),
+        pages: z.array(StoryPageSchema),
+        characters: z.array(CharacterSchema),
+        genre: z.string(),
+        targetAge: z.string(),
+      }),
+      system: systemInstruction,
+      prompt: `Create a captivating and creative children's storybook based on this prompt: "${prompt}".`,
     });
 
-    const story = storyResult.object as StoryWithImages;
+    const story = storyResult.object;
 
-    // Step 2: Generate cover image
-    let coverImageUrl: string | undefined;
-    try {
-      const coverPromptResult = await generateText({
-        model: google("gemini-2.5-flash"),
-        prompt: `Create a detailed cover image prompt for this children's storybook. Use a single, consistent visual theme for the entire book as specified below.
+    // Map to internal structure expected by frontend
+    const mappedStory = {
+      title: story.title,
+      pages: story.pages.map(p => {
+        // Construct a robust image prompt
+        const charactersInScene = story.characters.filter(c => p.characters.includes(c.name));
+        const characterDescriptions = charactersInScene.map(c => `${c.name} (${c.appearance})`).join(", ");
         
-        Title: ${story.title}
-        Genre: ${story.genre}
-        Main Characters: ${story.characters
-          .map((char) => `${char.name} (${char.appearance})`)
-          .join(", ")}
-        
-         Generate a prompt for a beautiful, colorful children's book cover illustration.
-         Enforce this exact visual theme (do not deviate across pages): ${IMAGE_STYLE_DIRECTIVE}
-        Include:
-        - Main characters in a welcoming scene
-        - Warm, inviting colors
-        - Child-friendly artistic style with consistent character appearance
-        - Storybook cover composition matching the theme
-        
-        IMPORTANT: Create a pure illustration with NO TEXT, NO LETTERS, NO WORDS, NO WRITING of any kind.
-        
-        Keep it concise (max 80 words).`,
-      });
-
-      const coverImageResult = await generateImage({
-        model: fal.image("fal-ai/qwen-image"),
-        prompt: `${coverPromptResult.text}. Visual theme: ${IMAGE_STYLE_DIRECTIVE}`,
-        size: "1024x768",
-      });
-
-      coverImageUrl = `data:image/png;base64,${Buffer.from(
-        coverImageResult.image.uint8Array
-      ).toString("base64")}`;
-    } catch (error) {
-      console.error("Error generating cover image:", error);
-      // Ensure we always have a cover image for downstream fallbacks
-      coverImageUrl = makePlaceholderImage(story.title);
-    }
-
-    // Helpers for robust retries
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-    async function retry<T>(
-      fn: () => Promise<T>,
-      attempts = 3,
-      baseDelayMs = 700
-    ): Promise<T> {
-      let lastErr: unknown;
-      for (let i = 0; i < attempts; i += 1) {
-        try {
-          return await fn();
-        } catch (err) {
-          lastErr = err;
-          const delay = baseDelayMs * Math.pow(2, i);
-          console.warn(
-            `Attempt ${i + 1}/${attempts} failed. Retrying in ${delay}ms...`
-          );
-          await sleep(delay);
-        }
-      }
-      throw lastErr;
-    }
-
-    // Step 3: Generate image prompts and images in parallel with limited concurrency, retry, and fallback
-    const CONCURRENCY = 3;
-
-    async function generatePageImage(
-      page: z.infer<typeof StoryPageSchema>,
-      index: number
-    ) {
-      try {
-        const imagePromptResult = await retry(() =>
-          generateText({
-            model: google("gemini-2.5-flash"),
-            prompt: `Create a detailed, child-friendly illustration prompt for this storybook page. Use a single, consistent visual theme for the entire book as specified below.
-            
-            Title: ${page.title}
-            Content: ${page.content}
-            Characters in scene: ${page.characters.join(", ")}
-            Setting: ${page.setting}
-            Mood: ${page.mood}
-            
-            CHARACTER DESCRIPTIONS (MUST maintain exact consistency):
-            ${story.characters
-              .filter((char) => page.characters.includes(char.name))
-              .map((char) => `${char.name}: ${char.appearance}`)
-              .join("; ")}
-            
-             Generate a prompt for a colorful children's book illustration that captures this scene.
-             Enforce this exact visual theme (do not deviate across pages): ${IMAGE_STYLE_DIRECTIVE}
-             
-             CRITICAL: Use the EXACT character descriptions provided above. Do NOT change clothing, colors, hair, or any physical features.
-             
-            Include details about:
-            - The characters with their EXACT appearance as described
-            - Character expressions matching the mood
-            - The setting and environment
-            - Colors and lighting that match the mood
-            - Important objects or elements from the story
-            
-            ABSOLUTELY NO TEXT: Do not include any text, letters, words, signs, captions, or writing in the image.
-            
-            Keep it descriptive but concise (max 100 words).`,
-          })
-        );
-
-        const basePrompt = imagePromptResult.text;
-        const enhancedPrompt = `${basePrompt}. Visual theme: ${IMAGE_STYLE_DIRECTIVE}`;
-
-        const imageResult = await retry(async () => {
-          try {
-            return await generateImage({
-              model: fal.image("fal-ai/qwen-image"),
-              prompt: enhancedPrompt,
-              size: "1024x768",
-            });
-          } catch (err) {
-            console.warn(
-              "Primary model failed, trying fallback: fal-ai/flux-pro"
-            );
-            return await generateImage({
-              model: fal.image("fal-ai/flux-pro"),
-              prompt: enhancedPrompt,
-              size: "1024x768",
-            });
-          }
-        });
-
-        const base64Image = `data:image/png;base64,${Buffer.from(
-          imageResult.image.uint8Array
-        ).toString("base64")}`;
+        const robustImagePrompt = `
+          Style: ${story.visualTheme}.
+          Scene: ${p.imagePrompt}.
+          Characters present: ${characterDescriptions}.
+          No text, no words, high quality illustration.
+        `.trim().replace(/\s+/g, ' ');
 
         return {
-          ...page,
-          imageUrl: base64Image,
-          imagePrompt: enhancedPrompt,
+          text: p.content,
+          imagePrompt: robustImagePrompt,
+          isLoadingImage: false
         };
-      } catch (error) {
-        console.error(
-          `Image generation failed for page ${index + 1} after retries:`,
-          error
-        );
-        return {
-          ...page,
-          imageUrl: coverImageUrl ?? makePlaceholderImage(page.title),
-          imagePrompt: "[FALLBACK] Used cover image due to generation failures",
-        };
-      }
-    }
-
-    async function runWithConcurrency<T>(
-      factories: Array<() => Promise<T>>,
-      limit: number
-    ): Promise<T[]> {
-      const results: T[] = new Array(factories.length);
-      let next = 0;
-      async function worker() {
-        while (true) {
-          const current = next++;
-          if (current >= factories.length) break;
-          results[current] = await factories[current]();
-        }
-      }
-      const workers = Array(Math.min(limit, factories.length))
-        .fill(0)
-        .map(() => worker());
-      await Promise.all(workers);
-      return results;
-    }
-
-    const factories = story.pages.map(
-      (page, index) => () => generatePageImage(page, index)
-    );
-    const pagesWithImages = await runWithConcurrency(factories, CONCURRENCY);
-
-    const finalStory = {
-      ...story,
-      pages: pagesWithImages,
-      coverImageUrl,
+      })
     };
 
-    return NextResponse.json(finalStory);
+    return NextResponse.json(mappedStory);
+
   } catch (error) {
     console.error("Error generating story:", error);
     return NextResponse.json(
