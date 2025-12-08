@@ -1,29 +1,29 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
-import { Story, AppState, StoryPage } from './types';
-import { FlipBook } from './components/FlipBook';
-import { Button } from './components/Button';
-import { BookOpen, Sparkles, PenTool, AlertCircle, Key, X } from 'lucide-react';
-import Link from 'next/link';
-import { track } from '@vercel/analytics';
+import React, { useState, useRef } from "react";
+import { Story, AppState, StoryPage } from "./types";
+import { FlipBook } from "./components/FlipBook";
+import { Button } from "./components/Button";
+import { BookOpen, Sparkles, PenTool, AlertCircle, Key, X } from "lucide-react";
+import Link from "next/link";
+import { track } from "@vercel/analytics";
 
 export default function Home() {
   const [status, setStatus] = useState<AppState>(AppState.IDLE);
-  const [prompt, setPrompt] = useState('');
-  const [apiKey, setApiKey] = useState('');
+  const [prompt, setPrompt] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [story, setStory] = useState<Story | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Ref to track if we should continue generating images
   const isGeneratingImagesRef = useRef(false);
 
   const handleGenerateStory = async () => {
     if (!prompt.trim()) return;
 
-    track('generate_story');
+    track("generate_story");
 
     if (!apiKey.trim()) {
       setModalError(null);
@@ -37,20 +37,20 @@ export default function Home() {
     isGeneratingImagesRef.current = false;
 
     try {
-      const response = await fetch('/api/generate-story', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/generate-story", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, apiKey }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate story');
+        throw new Error("Failed to generate story");
       }
 
       const generatedStory: Story = await response.json();
       setStory(generatedStory);
       setStatus(AppState.READING);
-      
+
       // Start generating images in the background
       startImageGenerationQueue(generatedStory);
     } catch (err) {
@@ -67,34 +67,37 @@ export default function Home() {
     // We generate images sequentially to ensure order and manage rate limits gently
     for (let i = 0; i < pages.length; i++) {
       if (!isGeneratingImagesRef.current) break;
-      
+
       // Update loading state for this page
       updatePageStatus(i, { isLoadingImage: true });
 
       try {
-        const response = await fetch('/api/generate-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/generate-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt: pages[i].imagePrompt, apiKey }),
         });
 
         if (response.status === 429) {
-           const data = await response.json();
-           setModalError(data.message || "Free tier quota exceeded. Please enter a paid Gemini API key.");
-           setIsApiKeyModalOpen(true);
-           isGeneratingImagesRef.current = false;
-           updatePageStatus(i, { isLoadingImage: false });
-           break;
+          const data = await response.json();
+          setModalError(
+            data.message ||
+              "Free tier quota exceeded. Please enter a paid Gemini API key."
+          );
+          setIsApiKeyModalOpen(true);
+          isGeneratingImagesRef.current = false;
+          updatePageStatus(i, { isLoadingImage: false });
+          break;
         }
 
         if (!response.ok) {
-            throw new Error('Failed to generate image');
+          throw new Error("Failed to generate image");
         }
 
         const { imageUrl } = await response.json();
 
         if (!isGeneratingImagesRef.current) break;
-        
+
         updatePageStatus(i, { imageUrl, isLoadingImage: false });
       } catch (e) {
         console.error(`Failed to generate image for page ${i}`, e);
@@ -105,7 +108,7 @@ export default function Home() {
   };
 
   const updatePageStatus = (index: number, updates: Partial<StoryPage>) => {
-    setStory(prev => {
+    setStory((prev) => {
       if (!prev) return null;
       const newPages = [...prev.pages];
       newPages[index] = { ...newPages[index], ...updates };
@@ -116,7 +119,7 @@ export default function Home() {
   const handleRestart = () => {
     isGeneratingImagesRef.current = false;
     setStatus(AppState.IDLE);
-    setPrompt('');
+    setPrompt("");
     setStory(null);
   };
 
@@ -140,20 +143,24 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-4">
-           <Button 
-             variant="ghost" 
-             onClick={() => {
-               setModalError(null);
-               setIsApiKeyModalOpen(true);
-             }}
-             className="text-stone-400 hover:text-amber-400"
-           >
-             <Key className="w-4 h-4 mr-2" />
-             {apiKey ? "Update API Key" : "Add Gemini API Key"}
-           </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setModalError(null);
+              setIsApiKeyModalOpen(true);
+            }}
+            className="text-stone-400 hover:text-amber-400"
+          >
+            <Key className="w-4 h-4 mr-2" />
+            {apiKey ? "Update API Key" : "Add Gemini API Key"}
+          </Button>
 
           {status === AppState.READING && (
-            <Button variant="ghost" onClick={handleRestart} className="hidden md:flex">
+            <Button
+              variant="ghost"
+              onClick={handleRestart}
+              className="hidden md:flex"
+            >
               Create New Story
             </Button>
           )}
@@ -162,7 +169,6 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="flex-1 relative z-10 flex flex-col items-center justify-center p-4 md:p-8 w-full max-w-7xl mx-auto">
-        
         {status === AppState.IDLE && (
           <div className="w-full max-w-2xl flex flex-col items-center text-center animate-fade-in">
             <div className="mb-8 p-4 rounded-full bg-amber-500/10 border border-amber-500/20">
@@ -172,9 +178,10 @@ export default function Home() {
               What story shall we tell today?
             </h2>
             <p className="text-lg text-stone-400 mb-10 max-w-md leading-relaxed">
-              Enter a short idea, character, or theme, and watch as we weave a magical illustrated book just for you.
+              Enter a short idea, character, or theme, and watch as we weave a
+              magical illustrated book just for you.
             </p>
-            
+
             <div className="w-full bg-stone-800/50 backdrop-blur-xl border border-stone-700 rounded-2xl p-2 shadow-2xl shadow-black/50 transition-all focus-within:border-amber-500/50 focus-within:ring-4 focus-within:ring-amber-500/10">
               <textarea
                 value={prompt}
@@ -184,9 +191,11 @@ export default function Home() {
                 maxLength={300}
               />
               <div className="flex justify-between items-center px-4 pb-2 pt-2">
-                <span className="text-xs text-stone-600 font-medium">{prompt.length}/300</span>
-                <Button 
-                  onClick={handleGenerateStory} 
+                <span className="text-xs text-stone-600 font-medium">
+                  {prompt.length}/300
+                </span>
+                <Button
+                  onClick={handleGenerateStory}
                   disabled={!prompt.trim()}
                   className="shadow-amber-500/20"
                 >
@@ -200,7 +209,7 @@ export default function Home() {
               {[
                 "A magical cat who can control time",
                 "A young astronaut exploring a candy planet",
-                "A dragon who is afraid of fire"
+                "A dragon who is afraid of fire",
               ].map((suggestion) => (
                 <button
                   key={suggestion}
@@ -221,17 +230,26 @@ export default function Home() {
               <div className="absolute inset-0 border-4 border-t-amber-500 rounded-full animate-spin"></div>
               <BookOpen className="absolute inset-0 m-auto text-amber-500 w-8 h-8" />
             </div>
-            <h3 className="font-title text-2xl text-amber-100 mb-2">Weaving your tale...</h3>
-            <p className="text-stone-400">Crafting characters and plot twists</p>
+            <h3 className="font-title text-2xl text-amber-100 mb-2">
+              Weaving your tale...
+            </h3>
+            <p className="text-stone-400">
+              Crafting characters and plot twists
+            </p>
           </div>
         )}
 
         {status === AppState.ERROR && (
           <div className="flex flex-col items-center text-center max-w-md p-8 bg-red-900/20 border border-red-500/30 rounded-2xl">
             <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
-            <h3 className="font-title text-xl text-red-200 mb-2">The ink spilled!</h3>
+            <h3 className="font-title text-xl text-red-200 mb-2">
+              The ink spilled!
+            </h3>
             <p className="text-stone-400 mb-6">{error}</p>
-            <Button variant="secondary" onClick={() => setStatus(AppState.IDLE)}>
+            <Button
+              variant="secondary"
+              onClick={() => setStatus(AppState.IDLE)}
+            >
               Try Again
             </Button>
           </div>
@@ -243,27 +261,32 @@ export default function Home() {
           </div>
         )}
       </main>
-      
+
       <footer className="relative z-10 p-4 text-center text-stone-600 text-sm">
-        Powered by <Link href={"https://buildfastwithai.com"} target='_blank'>Build Fast with AI</Link>
+        Powered by{" "}
+        <Link href={"https://buildfastwithai.com"} target="_blank">
+          Build Fast with AI
+        </Link>
       </footer>
 
       {/* API Key Modal */}
       {isApiKeyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-[#1a1a1a] border border-stone-700 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
-            <button 
+            <button
               onClick={() => setIsApiKeyModalOpen(false)}
               className="absolute top-4 right-4 text-stone-500 hover:text-white transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
-            
+
             <div className="flex items-center gap-3 mb-6">
               <div className="p-3 bg-amber-500/10 rounded-full">
                 <Key className="w-6 h-6 text-amber-500" />
               </div>
-              <h3 className="text-xl font-bold text-white">Enter Gemini API Key</h3>
+              <h3 className="text-xl font-bold text-white">
+                Enter Gemini API Key
+              </h3>
             </div>
 
             {modalError && (
@@ -274,13 +297,16 @@ export default function Home() {
             )}
 
             <p className="text-stone-400 mb-6 text-sm leading-relaxed">
-              To generate stories and images, you&apos;ll need a Google Gemini API key. 
-              Your key is used only for this session and is never stored on our servers.
+              To generate stories and images, you&apos;ll need a Google Gemini
+              API key. Your key is used only for this session and is never
+              stored on our servers.
             </p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-stone-500 mb-1.5 uppercase tracking-wider">API Key</label>
+                <label className="block text-xs font-medium text-stone-500 mb-1.5 uppercase tracking-wider">
+                  API Key
+                </label>
                 <input
                   type="password"
                   value={apiKey}
@@ -289,9 +315,12 @@ export default function Home() {
                   className="w-full bg-black/20 border border-stone-700 text-white rounded-xl p-3 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all placeholder-stone-700"
                 />
               </div>
-              
+
               <div className="flex justify-end gap-3 pt-2">
-                <Button variant="ghost" onClick={() => setIsApiKeyModalOpen(false)}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsApiKeyModalOpen(false)}
+                >
                   Cancel
                 </Button>
                 <Button onClick={() => setIsApiKeyModalOpen(false)}>
